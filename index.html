@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Toki</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+  <header>Toki</header>
+
+  <div class="container">
+    <nav>
+      <button class="menu-btn active" onclick="showGame('home')"> Inicio</button>
+      <button class="menu-btn" onclick="showGame('minesweeper')">Buscaminas</button>
+      <button class="menu-btn" onclick="showGame('snake')"> Snake</button>
+      <button class="menu-btn" onclick="showGame('tictactoe')">Tres en Raya</button>
+      <button class="menu-btn" onclick="showGame('settings')">⚙️ Configuración</button>
+    </nav>
+
+    <main>
+      <div id="home" class="game-container active">
+        <h1>¡Bienvenido a Toki!</h1>
+      
+      </div>
+
+      <div id="minesweeper" class="game-container">
+        <h2>Buscaminas</h2>
+        <button onclick="initMinesweeper()">Nuevo Juego</button>
+        <div id="minesweeper-grid"></div>
+      </div>
+
+      <div id="snake" class="game-container">
+        <h2> Snake</h2>
+        <canvas id="snakeCanvas" width="400" height="400"></canvas>
+        <p>Puntuación: <span id="score">0</span></p>
+      </div>
+
+      <div id="tictactoe" class="game-container">
+        <h2>Tres en Raya</h2>
+        <div id="tic-tac-toe"></div>
+        <button onclick="resetTicTacToe()" style="margin-top:15px;">Nuevo Juego</button>
+      </div>
+
+      <div id="settings" class="game-container settings">
+        <h2> Configuración</h2>
+        <p><strong>Color de Fondo:</strong></p>
+        <input type="color" id="bgColor" value="#1a1a2e" onchange="changeBackground(this.value)">
+        
+        <p style="margin-top:20px;"><strong>Velocidad Snake:</strong></p>
+        <input type="range" id="snakeSpeed" min="50" max="200" value="120" step="10" 
+               oninput="updateSnakeSpeed(this.value)">
+        <span id="speedValue">120</span> ms
+      </div>
+    </main>
+  </div>
+
+  <script>
+    let snakeInterval = null;
+    let snakeSpeed = 120;
+
+    function changeBackground(color) {
+      document.documentElement.style.setProperty('--bg-color', color);
+    }
+
+    function updateSnakeSpeed(value) {
+      snakeSpeed = parseInt(value);
+      document.getElementById('speedValue').textContent = value;
+    }
+
+    function showGame(game) {
+      // Limpiar intervalos antes de cambiar
+      if (snakeInterval) {
+        clearInterval(snakeInterval);
+        snakeInterval = null;
+      }
+
+      document.querySelectorAll('.game-container').forEach(el => el.classList.remove('active'));
+      document.getElementById(game).classList.add('active');
+
+      document.querySelectorAll('.menu-btn').forEach(btn => btn.classList.remove('active'));
+      event.target.classList.add('active');
+
+      // Inicializar solo el juego seleccionado
+      if (game === 'snake') initSnake();
+      if (game === 'tictactoe') resetTicTacToe();
+      if (game === 'minesweeper') initMinesweeper();
+    }
+
+    // ==================== SNAKE ====================
+    let snake, food, dx, dy, score;
+    const canvas = document.getElementById('snakeCanvas');
+    const ctx = canvas.getContext('2d');
+    const gridSize = 20;
+
+    function initSnake() {
+      if (snakeInterval) clearInterval(snakeInterval);
+
+      snake = [{x: 10, y: 10}];
+      dx = 1; dy = 0;
+      score = 0;
+      document.getElementById('score').textContent = score;
+
+      spawnFood();
+
+      snakeInterval = setInterval(gameLoop, snakeSpeed);
+    }
+
+    function spawnFood() {
+      food = {
+        x: Math.floor(Math.random() * (canvas.width / gridSize)),
+        y: Math.floor(Math.random() * (canvas.height / gridSize))
+      };
+    }
+
+    function gameLoop() {
+      // Solo ejecutar si el juego Snake está visible
+      if (!document.getElementById('snake').classList.contains('active')) {
+        clearInterval(snakeInterval);
+        snakeInterval = null;
+        return;
+      }
+
+      const head = {x: snake[0].x + dx, y: snake[0].y + dy};
+
+      // Colisión con paredes o consigo mismo
+      if (head.x < 0 || head.x >= canvas.width/gridSize || 
+          head.y < 0 || head.y >= canvas.height/gridSize ||
+          snake.some(segment => segment.x === head.x && segment.y === head.y)) {
+        
+        clearInterval(snakeInterval);
+        snakeInterval = null;
+        alert("¡Game Over! Puntuación: " + score);
+        initSnake();  // Reinicia automáticamente
+        return;
+      }
+
+      snake.unshift(head);
+
+      if (head.x === food.x && head.y === food.y) {
+        score += 10;
+        document.getElementById('score').textContent = score;
+        spawnFood();
+      } else {
+        snake.pop();
+      }
+
+      // Dibujar
+      ctx.fillStyle = '#0a0f1f';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      ctx.fillStyle = '#00ffcc';
+      snake.forEach(s => ctx.fillRect(s.x * gridSize, s.y * gridSize, gridSize-2, gridSize-2));
+
+      ctx.fillStyle = '#ff00aa';
+      ctx.fillRect(food.x * gridSize, food.y * gridSize, gridSize-2, gridSize-2);
+    }
+
+    // Controles
+    document.addEventListener('keydown', e => {
+      if (!document.getElementById('snake').classList.contains('active')) return;
+
+      switch(e.key) {
+        case 'ArrowUp':    if (dy !== 1) { dx = 0; dy = -1; } break;
+        case 'ArrowDown':  if (dy !== -1) { dx = 0; dy = 1; } break;
+        case 'ArrowLeft':  if (dx !== 1) { dx = -1; dy = 0; } break;
+        case 'ArrowRight': if (dx !== -1) { dx = 1; dy = 0; } break;
+      }
+    });
+
+    // ==================== TRES EN RAYA ====================
+    let currentPlayer = 'X';
+    let board = Array(9).fill(null);
+
+    function createTicTacToe() {
+      const grid = document.getElementById('tic-tac-toe');
+      grid.innerHTML = '';
+      for (let i = 0; i < 9; i++) {
+        const cell = document.createElement('div');
+        cell.classList.add('cell');
+        cell.dataset.index = i;
+        cell.addEventListener('click', handleClick);
+        grid.appendChild(cell);
+      }
+    }
+
+    function handleClick(e) {
+      const index = parseInt(e.target.dataset.index);
+      if (board[index]) return;
+
+      board[index] = currentPlayer;
+      e.target.textContent = currentPlayer;
+      e.target.style.color = currentPlayer === 'X' ? '#00ffcc' : '#ff00aa';
+
+      if (checkWin()) {
+        alert(`¡${currentPlayer} gana!`);
+        resetTicTacToe();
+        return;
+      }
+      if (board.every(cell => cell)) {
+        alert("¡Empate!");
+        resetTicTacToe();
+        return;
+      }
+
+      currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+    }
+
+    function checkWin() {
+      const wins = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+      return wins.some(([a,b,c]) => board[a] && board[a] === board[b] && board[a] === board[c]);
+    }
+
+    function resetTicTacToe() {
+      board = Array(9).fill(null);
+      currentPlayer = 'X';
+      createTicTacToe();
+    }
+
+    // ==================== BUSCAMINAS ====================
+    let mineGrid = [];
+    const rows = 8, cols = 8, minesCount = 10;
+
+    function initMinesweeper() {
+      mineGrid = Array(rows).fill().map(() => Array(cols).fill(0));
+      let placed = 0;
+      while (placed < minesCount) {
+        const r = Math.floor(Math.random() * rows);
+        const c = Math.floor(Math.random() * cols);
+        if (mineGrid[r][c] !== '💣') {
+          mineGrid[r][c] = '💣';
+          placed++;
+        }
+      }
+
+      const gridDiv = document.getElementById('minesweeper-grid');
+      gridDiv.innerHTML = '';
+      gridDiv.style.display = 'grid';
+      gridDiv.style.gridTemplateColumns = `repeat(${cols}, 40px)`;
+      gridDiv.style.gap = '4px';
+
+      for (let i = 0; i < rows; i++) {
+        for (let j = 0; j < cols; j++) {
+          const cell = document.createElement('div');
+          cell.style.width = '40px';
+          cell.style.height = '40px';
+          cell.style.background = '#16213e';
+          cell.style.display = 'flex';
+          cell.style.alignItems = 'center';
+          cell.style.justifyContent = 'center';
+          cell.style.fontSize = '22px';
+          cell.style.cursor = 'pointer';
+          cell.dataset.row = i;
+          cell.dataset.col = j;
+          cell.addEventListener('click', revealCell);
+          gridDiv.appendChild(cell);
+        }
+      }
+    }
+
+    function revealCell(e) {
+      const r = parseInt(e.target.dataset.row);
+      const c = parseInt(e.target.dataset.col);
+      if (mineGrid[r][c] === '💣') {
+        e.target.textContent = '💥';
+        e.target.style.background = '#ff0044';
+        alert("¡Boom! Has perdido.");
+        initMinesweeper();
+      } else {
+        e.target.textContent = '✅';
+        e.target.style.background = '#00cc77';
+      }
+    }
+
+    // Iniciar al cargar
+    createTicTacToe();
+  </script>
+</body>
+</html>

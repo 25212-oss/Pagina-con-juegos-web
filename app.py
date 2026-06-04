@@ -1,38 +1,11 @@
-from flask import Flask, render_template, request
+from flask import Flask, render_template
 
 app = Flask(__name__)
 
-# Lista para guardar personas
-personas = []
-
-@app.route("/", methods=["GET", "POST"])
+@app.route('/')
 def index():
-    global personas
+    return render_template('index.html')
 
-    # GUARDAR PERSONA
-    if request.method == "POST":
-        nombre = request.form.get("nombre")
-        edad = request.form.get("edad")
-
-        if nombre and edad:
-            personas.append({
-                "nombre": nombre,
-                "edad": edad
-            })
-
-    # BUSCADOR
-    busqueda = request.args.get("buscar")
-
-    if busqueda:
-        resultados = [
-            p for p in personas
-            if busqueda.lower() in p["nombre"].lower()
-        ]
-    else:
-        resultados = personas
-
-    return render_template("index.html", personas=resultados)
-
-
-if __name__ == "__main__":
+if __name__ == '__main__':
+    print(" Servidor iniciado http://127.0.0.1:5000")
     app.run(debug=True)
